@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Presenze campo estivo</title>
+<style>
+  :root { --sfondo:#eef3f6; --ink:#14213d; --tenue:#5b6b82; --linea:#cfd9e2; --mare:#0b6e99; --sole:#f2b705; --ok:#1b8a5a; --no:#b3261e; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin:0; background:var(--sfondo); color:var(--ink); font:17px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  main { max-width:480px; margin:0 auto; padding:18px 16px 24px; }
+  h1 { font-size:28px; line-height:1.1; margin:6px 0 4px; letter-spacing:-.02em; }
+  h2 { font-size:16px; margin:22px 0 8px; text-transform:uppercase; letter-spacing:.04em; color:var(--tenue); }
+  .sotto { color:var(--tenue); margin:0 0 16px; }
+  .errore { color:var(--no); font-weight:600; }
+  button { font:inherit; font-weight:700; border:0; border-radius:14px; width:100%; padding:20px 12px; margin:0 0 10px; cursor:pointer; color:#fff; background:var(--mare); }
+  button:focus-visible, input:focus-visible, select:focus-visible { outline:3px solid var(--ink); outline-offset:2px; }
+  button.nome { background:#fff; color:var(--ink); border:1px solid var(--linea); text-align:left; padding:16px; }
+  button.piccolo { width:auto; padding:6px 10px; margin:0; background:none; color:var(--tenue); font-weight:500; text-decoration:underline; }
+  button.fine { background:var(--ink); margin-top:20px; }
+  button.pranzo { background:var(--sole); color:var(--ink); padding:26px 12px; font-size:20px; }
+  input[type=text], input[type=password], select { font:inherit; width:100%; padding:14px; border-radius:10px; border:1px solid var(--linea); margin-bottom:12px; background:#fff; }
+  .griglia { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .griglia button { margin:0; }
+  .carta { background:#fff; border:1px solid var(--linea); border-radius:14px; padding:14px 16px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .carta.ok { border-color:var(--ok); border-width:2px; }
+  .avviso { background:var(--ok); color:#fff; font-weight:700; border-radius:12px; padding:12px 14px; margin-bottom:14px; }
+  #barra { position:sticky; top:0; z-index:5; background:var(--ok); color:#fff; font-weight:700; text-align:center; padding:10px 12px; }
+  #toast { position:fixed; left:16px; right:16px; bottom:20px; z-index:12; max-width:448px; margin:0 auto; background:var(--ink); color:#fff; padding:14px; border-radius:12px; text-align:center; font-weight:600; }
+  .versione { text-align:center; color:var(--tenue); font-size:12px; margin:0 0 24px; }
+  #attesa { position:fixed; inset:0; z-index:10; background:rgba(238,243,246,.88); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; font-weight:700; animation:compari .2s .15s both; }
+  .giro { width:56px; height:56px; border-radius:50%; border:7px solid var(--linea); border-top-color:var(--mare); }
+  @keyframes compari { from { opacity:0; } to { opacity:1; } }
+  @keyframes gira { to { transform:rotate(360deg); } }
+  @media (prefers-reduced-motion: no-preference) { .giro { animation:gira 1s linear infinite; } }
+</style>
+</head>
+<body>
+<div id="barra" hidden></div>
+<main id="app"></main>
+<p class="versione" id="versione"></p>
+<div id="toast" hidden role="status" aria-live="polite"></div>
+<div id="attesa" hidden role="status" aria-live="polite"><div class="giro"></div><span id="testo-attesa">Attendere…</span></div>
+
+<script>
+// ▼▼ Incolla qui l'indirizzo della web app Apps Script (quello che finisce con /exec) ▼▼
+const API_URL = 'INCOLLA_QUI_L_URL_DELLA_WEB_APP';
+
+const GIORNI = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì'];
+const $ = id => document.getElementById(id);
+const app = $('app');
+const ID = (new URLSearchParams(location.search).get('id') || '').replace(/[^A-Za-z0-9_-]/g, ''); // tag aperto da link
+
+const mem = {
+  get(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+};
+let pin = mem.get('pin');
+let giorno = (() => { const d = new Date().getDay(); return d >= 1 && d <= 5 ? d - 1 : null; })();
+let occupato = false;
+
+const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const vista = html => { app.innerHTML = html; window.scrollTo(0, 0); };
+const caricamento = () => vista('<p class="sotto">Caricamento…</p>');
+
+function avviso(t) {
+  const el = $('toast'); el.textContent = t; el.hidden = false;
+  clearTimeout(avviso.t); avviso.t = setTimeout(() => { el.hidden = true; }, 3500);
+}
+
+function attesa(on, testo) {
+  occupato = on; $('attesa').hidden = !on;
+  if (on) $('testo-attesa').textContent = testo;
+}
+
+/* ---------- Server (Apps Script) ---------- */
+async function chiama(fn, ...args) {
+  attesa(true, fn === 'registra' ? 'Salvataggio…' : 'Caricamento…');
+  try {
+    // text/plain evita la richiesta preliminare CORS, che Apps Script non gestisce
+    const r = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                                     body: JSON.stringify({ fn, args, pin }) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error);
+    return j.data;
+  } catch (e) {
+    if (e instanceof TypeError || e instanceof SyntaxError) throw new Error('Connessione non riuscita: controlla la rete e riprova.');
+    throw e;
+  } finally { attesa(false); }
+}
+
+const cache = {};   // elenchi squadre/persone: li chiedo una volta sola per sessione
+async function dati(fn, ...a) { const k = fn + '|' + a.join('|'); return cache[k] || (cache[k] = await chiama(fn, ...a)); }
+
+function errore(e) {
+  if (/PIN/.test(e.message)) { pin = ''; mem.set('pin', ''); return schermataPin('PIN errato. Riprova.'); }
+  vista(`<h1>Qualcosa non va</h1><p class="errore">${esc(e.message)}</p>
+    <button id="ripr">Riprova</button>${ID ? '' : '<button id="mano" class="nome">Torna alla home</button>'}`);
+  $('ripr').onclick = avvia;
+  if ($('mano')) $('mano').onclick = () => home();
+}
+
+function schermataPin(msg) {
+  vista(`<h1>Presenze</h1><p class="sotto">Inserisci il PIN degli animatori.</p>
+    ${msg ? `<p class="errore">${esc(msg)}</p>` : ''}
+    <input id="pin" type="password" autocomplete="off" placeholder="PIN">
+    <button id="vai">Entra</button>`);
+  $('vai').onclick = () => { pin = $('pin').value.trim(); mem.set('pin', pin); avvia(); };
+}
+
+/* ---------- Lettura NFC dentro la pagina (Android + Chrome) ---------- */
+let lettore = null, ctrl = null, wake = null, ultimo = { id: '', t: 0 };
+const nfcDisponibile = 'NDEFReader' in window;
+
+function idDaTag(e) {
+  const dec = new TextDecoder();
+  for (const r of e.message.records) {
+    if (!['url', 'absolute-url', 'text'].includes(r.recordType)) continue;
+    const t = dec.decode(r.data).trim();
+    const m = /[?&]id=([A-Za-z0-9_-]+)/.exec(t);
+    if (m) return m[1];
+    if (/^[A-Za-z0-9_-]{2,20}$/.test(t)) return t;
+  }
+  return '';
+}
+
+function tagLetto(e) {
+  const id = idDaTag(e);
+  if (!id) return avviso('Tag non riconosciuto.');
+  const ora = Date.now();
+  if (occupato || (id === ultimo.id && ora - ultimo.t < 3000)) return;   // ignora riletture ravvicinate
+  ultimo = { id, t: ora };
+  if (navigator.vibrate) navigator.vibrate(120);
+  if (giorno === null) return avviso('Scegli prima il giorno (oggi non è lunedì–venerdì).');
+  scheda(id);
+}
+
+async function bloccaSchermo() {
+  try {
+    if ('wakeLock' in navigator) {
+      wake = await navigator.wakeLock.request('screen');
+      wake.addEventListener('release', () => { wake = null; barra(); });
+    }
+  } catch (e) { wake = null; }
+  barra();
+}
+
+function barra() {
+  const b = $('barra'); b.hidden = !lettore;
+  if (lettore) b.textContent = wake ? '📡 Lettura attiva · schermo sempre acceso' : '📡 Lettura attiva · ⚠️ tieni lo schermo acceso';
+}
+
+async function avviaLettura() {
+  try {
+    ctrl = new AbortController();
+    const l = new NDEFReader();
+    await l.scan({ signal: ctrl.signal });
+    l.onreading = tagLetto;
+    l.onreadingerror = () => avviso('Tag non leggibile: riavvicinalo.');
+    lettore = l;
+    await bloccaSchermo();
+    home();
+  } catch (e) {
+    lettore = null;
+    avviso(e.name === 'NotAllowedError' ? 'Permesso NFC negato: consentilo nelle impostazioni del sito.'
+         : 'Impossibile avviare l’NFC: controlla che sia attivo nelle impostazioni del telefono.');
+  }
+}
+
+function fermaLettura() {
+  if (ctrl) ctrl.abort();
+  if (wake) wake.release();
+  lettore = null; ctrl = null; wake = null; barra(); home();
+}
+
+// Quando si torna sulla pagina lo schermo va bloccato di nuovo (il sistema lo rilascia in background)
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && lettore) bloccaSchermo(); });
+
+/* ---------- Schermate ---------- */
+function pannelloNfc() {
+  if (!nfcDisponibile) return `<div class="carta" style="margin-bottom:14px"><span>Questo telefono non legge i tag dentro l’app: avvicina il tag (si apre la scheda) oppure cerca a mano.</span></div>`;
+  return lettore
+    ? `<div class="carta ok" style="margin-bottom:14px"><span>📡 In attesa di un tag…</span><button class="piccolo" id="stop">Ferma</button></div>`
+    : `<button id="avvia">📡 Avvia lettura tag</button>`;
+}
+
+async function home(msg) {
+  caricamento();
+  try {
+    const squadre = await dati('getSquadre');
+    vista(`<h1>Presenze</h1><p class="sotto">${nfcDisponibile ? 'Avvia la lettura, oppure cerca a mano.' : 'Cerca a mano il partecipante.'}</p>
+      ${msg ? `<p class="errore">${esc(msg)}</p>` : ''}
+      ${pannelloNfc()}
+      <select id="g" aria-label="Giorno">${giorno === null ? '<option value="">Scegli il giorno…</option>' : ''}
+        ${GIORNI.map((n, i) => `<option value="${i}" ${i === giorno ? 'selected' : ''}>${n}</option>`).join('')}</select>
+      <h2>Cerca a mano</h2>
+      <div class="griglia">${squadre.map(s => `<button data-sq="${esc(s)}">${esc(s)}</button>`).join('')}</div>`);
+    $('g').onchange = e => { giorno = e.target.value === '' ? null : Number(e.target.value); };
+    if ($('avvia')) $('avvia').onclick = avviaLettura;
+    if ($('stop')) $('stop').onclick = fermaLettura;
+    app.querySelectorAll('[data-sq]').forEach(b => b.onclick = () => {
+      if (giorno === null) return avviso('Scegli prima il giorno.');
+      persone(b.dataset.sq);
+    });
+  } catch (e) { errore(e); }
+}
+
+async function persone(squadra) {
+  caricamento();
+  try {
+    const lista = await dati('getPersone', squadra);
+    vista(`<button class="piccolo" id="indietro">← Squadre</button><h1>${esc(squadra)}</h1>
+      <p class="sotto">${GIORNI[giorno]}</p>
+      <input id="cerca" type="text" placeholder="Cerca nome…" autocomplete="off">
+      ${lista.map(p => `<button class="nome" data-id="${esc(p.id)}">${esc(p.cognome)} ${esc(p.nome)}</button>`).join('')}`);
+    $('indietro').onclick = () => home();
+    $('cerca').oninput = e => {
+      const q = e.target.value.toLowerCase();
+      app.querySelectorAll('.nome').forEach(b => { b.hidden = !b.textContent.toLowerCase().includes(q); });
+    };
+    app.querySelectorAll('.nome').forEach(b => b.onclick = () => scheda(b.dataset.id));
+  } catch (e) { errore(e); }
+}
+
+/* La presenza si registra aprendo la scheda */
+async function scheda(id) {
+  try { disegna(await chiama('registra', id, giorno, 'presenza', '')); } catch (e) { errore(e); }
+}
+
+function disegna(s, msg) {
+  const pres = s.presenza
+    ? `<div class="carta ok"><span>✅ Presente dalle ${esc(s.presenza)}</span>${s.pranzo === 'SI' ? '' : '<button class="piccolo" id="annulla">Annulla</button>'}</div>`
+    : `<div class="carta"><span>Presenza non registrata</span><button class="piccolo" id="reg">Registra</button></div>`;
+  const pranzo = !s.pranzoAcquistato
+    ? `<div class="carta"><span>Pranzo non acquistato</span></div>`
+    : s.pranzo === 'SI'
+      ? `<div class="carta ok"><span>🍝 Pranzo confermato</span><button class="piccolo" id="annPranzo">Annulla</button></div>`
+      : s.presenza
+        ? `<button class="pranzo" id="confPranzo">Conferma pranzo</button>`
+        : `<div class="carta"><span>Registra prima la presenza per confermare il pranzo</span></div>`;
+  vista(`${msg ? `<div class="avviso" role="status">✓ ${esc(msg)}</div>` : ''}
+    <h1>${esc(s.nome)} ${esc(s.cognome)}</h1><p class="sotto">${esc(s.squadra)} · ${GIORNI[giorno]}</p>
+    ${pres}<h2>Pranzo</h2>${pranzo}
+    <button class="fine" id="fine">Fatto</button>`);
+  const agisci = async (azione, valore, conferma) => {
+    try { disegna(await chiama('registra', s.id, giorno, azione, valore), conferma); } catch (e) { errore(e); }
+  };
+  if ($('confPranzo')) $('confPranzo').onclick = () => agisci('pranzo', 'SI', 'Pranzo confermato');
+  if ($('annPranzo')) $('annPranzo').onclick = () => { if (confirm('Annullare il pranzo di oggi?')) agisci('pranzo', '', 'Pranzo annullato'); };
+  if ($('annulla')) $('annulla').onclick = () => { if (confirm('Annullare la presenza di oggi?')) agisci('annulla', '', 'Presenza annullata'); };
+  if ($('reg')) $('reg').onclick = () => agisci('presenza', '', 'Presenza registrata');
+  // Aperta da un link tag (?id=) si chiude qui; nella postazione si torna alla home, con la lettura sempre attiva.
+  $('fine').onclick = () => ID ? riepilogoFinale(s) : home();
+}
+
+function riepilogoFinale(s) {
+  vista(`<h1>Fatto ✓</h1><p class="sotto">${esc(s.nome)} ${esc(s.cognome)} · ${esc(s.squadra)} · ${GIORNI[giorno]}</p>
+    <div class="carta ${s.presenza ? 'ok' : ''}"><span>${s.presenza ? '✅ Presente dalle ' + esc(s.presenza) : 'Presenza non registrata'}</span></div>
+    <div class="carta ${s.pranzo === 'SI' ? 'ok' : ''}" style="margin-top:10px"><span>${
+      !s.pranzoAcquistato ? 'Pranzo non acquistato' : s.pranzo === 'SI' ? '🍝 Pranzo confermato' : 'Pranzo non confermato'}</span></div>
+    <p class="sotto" style="margin-top:20px">Puoi chiudere la pagina.</p>
+    <button class="piccolo" id="modifica">Modifica</button>`);
+  $('modifica').onclick = () => disegna(s);
+}
+
+function sceltaGiorno() {
+  vista(`<h1>Che giorno è?</h1><p class="sotto">Oggi non è lunedì–venerdì: scegli il giorno da registrare.</p>
+    <select id="g">${GIORNI.map((n, i) => `<option value="${i}">${n}</option>`).join('')}</select>
+    <button id="ok">Continua</button>`);
+  $('ok').onclick = () => { giorno = Number($('g').value); scheda(ID); };
+}
+
+function avvia() {
+  if (API_URL.indexOf('INCOLLA') >= 0) return vista('<h1>Configurazione</h1><p class="errore">Manca l’indirizzo della web app Apps Script: va incollato in API_URL, in cima al codice di index.html.</p>');
+  if (!pin) return schermataPin();
+  if (ID) return giorno === null ? sceltaGiorno() : scheda(ID);
+  home();
+}
+
+$('versione').textContent = 'Versione 5 · ' + (ID ? 'tag ' + ID : 'postazione');
+avvia();
+</script>
+</body>
+</html>
