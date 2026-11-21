@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Presenze campo estivo</title>
+<style>
+  :root { --bg:#fdf6e9; --ink:#17324d; --tenue:#667a8c; --linea:#eadfcb; --mare:#1b8fd6; --acqua:#12b5a6; --sole:#ffc83d; --ok:#22a06b; --no:#e5484d; --ombra:0 8px 22px rgba(23,50,77,.10); }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  [hidden] { display:none !important; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:17px/1.4 ui-rounded,"SF Pro Rounded",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; padding-bottom:104px; }
+  main { max-width:520px; margin:0 auto; padding:14px 16px 8px; }
+  h1 { font-size:28px; line-height:1.1; margin:6px 0 4px; letter-spacing:-.02em; }
+  h2 { font-size:13px; margin:22px 2px 10px; text-transform:uppercase; letter-spacing:.08em; color:var(--tenue); }
+  .sotto { color:var(--tenue); margin:0 0 16px; }
+  .errore { color:var(--no); font-weight:700; }
+  button { font:inherit; font-weight:800; border:0; border-radius:18px; width:100%; padding:18px 14px; margin:0 0 10px; cursor:pointer; color:#fff;
+           background:linear-gradient(135deg,var(--acqua),var(--mare)); box-shadow:0 6px 16px rgba(27,143,214,.30); }
+  button:focus-visible, input:focus-visible, select:focus-visible { outline:3px solid var(--ink); outline-offset:2px; }
+  @media (prefers-reduced-motion: no-preference) { button { transition:transform .08s; } button:active { transform:scale(.98); } }
+  button.piccolo { width:auto; padding:6px 10px; margin:0; background:none; box-shadow:none; color:var(--tenue); font-weight:600; text-decoration:underline; }
+  button.nome { background:#fff; color:var(--ink); box-shadow:var(--ombra); text-align:left; padding:16px; }
+  button.fine { background:var(--ink); box-shadow:none; margin-top:22px; }
+  button.pranzo { background:linear-gradient(135deg,#ffd75e,var(--sole)); color:var(--ink); font-size:20px; padding:24px 14px; box-shadow:0 6px 16px rgba(255,200,61,.45); }
+  button.cta { font-size:19px; padding:22px 14px; margin-bottom:14px; }
+  input[type=search], input[type=text], input[type=password], select { font:inherit; width:100%; padding:15px 16px; border-radius:16px; border:2px solid var(--linea); margin-bottom:14px; background:#fff; color:var(--ink); }
+  input.ricerca { box-shadow:var(--ombra); font-size:17px; }
+
+  .hero { background:linear-gradient(135deg,#0fb5a5 0%,#1b8fd6 75%); color:#fff; border-radius:26px; padding:20px 18px 16px; margin:2px 0 16px; box-shadow:0 12px 28px rgba(27,143,214,.28); position:relative; overflow:hidden; }
+  .hero::after { content:""; position:absolute; right:-34px; top:-34px; width:140px; height:140px; border-radius:50%; background:rgba(255,255,255,.14); }
+  .hero-riga { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; position:relative; z-index:1; }
+  .hero h1 { margin:0; }
+  .hero .sotto { color:rgba(255,255,255,.9); margin:4px 0 12px; }
+  .hero select { margin:0; position:relative; z-index:1; border:0; font-weight:800; background:rgba(255,255,255,.95); }
+  button.info { width:44px; height:44px; padding:0; margin:0; border-radius:50%; background:rgba(255,255,255,.22); box-shadow:none; color:#fff; font-size:22px; line-height:1; flex:none; }
+
+  .griglia { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  button.sq { height:92px; margin:0; padding:10px; background:#fff; color:var(--ink); box-shadow:var(--ombra); border-radius:20px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:8px; overflow:hidden; }
+  .pallino { width:28px; height:28px; border-radius:50%; flex:none; box-shadow:inset 0 -3px 0 rgba(0,0,0,.15); }
+  .sq .nm { font-size:15px; line-height:1.15; text-align:center; max-width:100%; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+
+  button.riga { display:flex; align-items:center; gap:12px; height:72px; padding:0 14px; margin:0 0 10px; background:#fff; color:var(--ink); border-radius:18px; box-shadow:var(--ombra); text-align:left; overflow:hidden; }
+  .riga .testo { flex:1; min-width:0; }
+  .riga .cg, .riga .nm2 { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .riga .cg { font-size:17px; line-height:1.2; }
+  .riga .nm2 { font-size:14px; font-weight:600; color:var(--tenue); }
+  .avatar { flex:none; width:46px; height:46px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:16px; }
+  .avatar.grande { width:88px; height:88px; font-size:32px; margin:0 auto 12px; box-shadow:0 10px 22px rgba(0,0,0,.20); }
+  .badge { flex:none; font-size:12px; font-weight:800; padding:5px 9px; border-radius:999px; background:#e3f6ec; color:#12724a; white-space:nowrap; }
+  .badge.p { background:#fff1cc; color:#8a5b00; }
+  .intest { border-left:8px solid var(--c); padding-left:12px; margin:10px 0 14px; }
+  .intest h1 { margin-top:0; }
+
+  .profilo { text-align:center; margin:6px 0 10px; }
+  .profilo h1 { margin:0 0 10px; }
+  .chips { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+  .chip { padding:6px 13px; border-radius:999px; font-size:14px; font-weight:800; background:#fff; box-shadow:var(--ombra); }
+  .carta { background:#fff; border-radius:20px; padding:16px 18px; display:flex; justify-content:space-between; align-items:center; gap:10px; min-height:72px; margin-bottom:12px; box-shadow:var(--ombra); }
+  .carta.ok { background:#e8f7ef; box-shadow:inset 0 0 0 2px var(--ok); }
+  .avviso { background:var(--ok); color:#fff; font-weight:800; border-radius:16px; padding:13px 16px; margin-bottom:14px; }
+
+  #barra { position:sticky; top:0; z-index:5; background:var(--ok); color:#fff; font-weight:800; text-align:center; padding:12px; }
+  #sync { position:fixed; left:12px; right:12px; bottom:calc(12px + env(safe-area-inset-bottom)); z-index:6; max-width:496px; margin:0 auto; text-align:center;
+          font-size:16px; font-weight:800; padding:17px 14px; border-radius:18px; background:var(--ok); color:#fff; box-shadow:0 10px 26px rgba(0,0,0,.22); }
+  #sync.att { background:var(--sole); color:var(--ink); }
+  #sync.ko { background:var(--no); }
+  #toast { position:fixed; left:16px; right:16px; bottom:calc(92px + env(safe-area-inset-bottom)); z-index:12; max-width:488px; margin:0 auto; background:var(--ink); color:#fff; padding:14px; border-radius:16px; text-align:center; font-weight:700; }
+  .versione { text-align:center; color:var(--tenue); font-size:12px; margin:8px 0 0; }
+
+  #guida { position:fixed; inset:0; z-index:30; background:var(--bg); overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .guida-testa { position:sticky; top:0; z-index:1; display:flex; justify-content:space-between; align-items:center; padding:14px 16px; background:linear-gradient(135deg,#0fb5a5,#1b8fd6); color:#fff; }
+  .guida-testa h2 { margin:0; font-size:22px; letter-spacing:0; text-transform:none; color:#fff; }
+  button.chiudi { width:44px; height:44px; padding:0; margin:0; border-radius:50%; background:rgba(255,255,255,.22); box-shadow:none; font-size:20px; flex:none; }
+  .guida-corpo { max-width:520px; margin:0 auto; padding:6px 16px 40px; }
+  .guida-corpo h3 { margin:20px 0 4px; font-size:17px; }
+  .guida-corpo p { margin:0 0 6px; }
+  .guida-corpo button { margin-top:22px; }
+
+  #attesa { position:fixed; inset:0; z-index:40; background:rgba(253,246,233,.9); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; font-weight:800; animation:compari .2s .15s both; }
+  .giro { width:56px; height:56px; border-radius:50%; border:7px solid var(--linea); border-top-color:var(--mare); }
+  @keyframes compari { from { opacity:0; } to { opacity:1; } }
+  @keyframes gira { to { transform:rotate(360deg); } }
+  @media (prefers-reduced-motion: no-preference) { .giro { animation:gira 1s linear infinite; } }
+</style>
+</head>
+<body>
+<div id="barra" hidden></div>
+<main id="app"></main>
+<p class="versione"><span id="versione"></span> · <button class="piccolo" id="apri-guida">Come funziona</button></p>
+<div id="guida" hidden role="dialog" aria-modal="true" aria-labelledby="guida-titolo">
+  <div class="guida-testa"><h2 id="guida-titolo">Come funziona</h2><button class="chiudi" id="chiudi-guida" aria-label="Chiudi">✕</button></div>
+  <div class="guida-corpo">
+    <h3>Android, lettura avviata</h3>
+    <p>Con la barra verde in alto, il tag apre la scheda nella stessa pagina e la presenza si registra da sola. Un bip a due toni conferma la lettura; un tono grave indica un tag non riconosciuto. Dopo “Fatto” torni alla home, con la lettura ancora attiva. È la modalità consigliata per la postazione.</p>
+    <h3>Android, lettura non avviata</h3>
+    <p>Il tag apre il link in una nuova scheda del browser. Dopo “Fatto” compare il riepilogo, con il pulsante per tornare alla schermata iniziale.</p>
+    <h3>iPhone</h3>
+    <p>Avvicina il tag allo schermo acceso e tocca la notifica: la scheda si apre in una nuova pagina. Dopo “Fatto” compare il riepilogo. Il bip non è disponibile.</p>
+    <h3>Senza tag (qualsiasi telefono)</h3>
+    <p>Scrivi il nome o il cognome nella barra di ricerca della home, oppure scegli la squadra. La presenza si registra aprendo la scheda. “Fatto” ti riporta alla home.</p>
+    <h3>Pranzo</h3>
+    <p>“Conferma pranzo” compare solo se il pranzo è stato acquistato e la presenza è registrata. Se non lo confermi, resta non confermato.</p>
+    <h3>Da ricordare</h3>
+    <p>Tornando alla home dal riepilogo la lettura NFC non riparte da sola: premi di nuovo “Avvia lettura tag”. Tieni lo schermo acceso, perché Chrome legge i tag solo con la pagina in primo piano.</p>
+    <h3>Salvataggio</h3>
+    <p>Le registrazioni compaiono subito e vengono inviate al foglio in background. In basso vedi lo stato: verde “Tutto salvato”, giallo “Salvataggio…”, rosso se manca la rete (restano in coda e partono appena torna).</p>
+    <h3>Esci da questo telefono</h3>
+    <p>In fondo alla home cancella PIN e dati salvati sul telefono. Usalo quando restituisci un telefono.</p>
+    <button id="ho-capito">Ho capito</button>
+  </div>
+</div>
+<div id="sync" role="status" aria-live="polite"></div>
+<div id="toast" hidden role="status" aria-live="polite"></div>
+<div id="attesa" hidden role="status" aria-live="polite"><div class="giro"></div><span id="testo-attesa">Attendere…</span></div>
+
+<script src="config.js"></script>
+<script>
+// L'indirizzo della web app Apps Script (quello che finisce con /exec) sta nel file config.js
+const API_URL = typeof API_URL_CONFIG === 'string' ? API_URL_CONFIG : '';
+
+const GIORNI = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì'];
+const $ = id => document.getElementById(id);
+const app = $('app');
+const ID = (new URLSearchParams(location.search).get('id') || '').replace(/[^A-Za-z0-9_-]/g, ''); // tag aperto da link
+
+const mem = {
+  get(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+};
+const leggi = k => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };
+const salva = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+
+let pin = mem.get('pin');
+let giorno = (() => { const d = new Date().getDay(); return d >= 1 && d <= 5 ? d - 1 : null; })();
+let occupato = false;
+let DB = leggi('db');              // partecipanti con presenze e pranzi, tenuti in memoria
+let coda = leggi('coda') || [];    // registrazioni ancora da inviare al foglio
+let invio = false, corrente = null;
+
+const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const vista = html => { corrente = null; app.innerHTML = html; window.scrollTo(0, 0); };
+
+function avviso(t) {
+  const el = $('toast'); el.textContent = t; el.hidden = false;
+  clearTimeout(avviso.t); avviso.t = setTimeout(() => { el.hidden = true; }, 3500);
+}
+
+function attesa(on, testo) {
+  occupato = on; $('attesa').hidden = !on;
+  if (on) $('testo-attesa').textContent = testo;
+}
+
+function stato() {
+  const el = $('sync');
+  if (!coda.length) { el.className = ''; el.textContent = '✓ Tutto salvato'; }
+  else if (invio) { el.className = 'att'; el.textContent = '⏳ Salvataggio… (' + coda.length + ')'; }
+  else { el.className = 'ko'; el.textContent = '⚠️ ' + coda.length + ' da inviare: riprovo appena c’è rete'; }
+}
+
+/* ---------- Rete (Apps Script) ---------- */
+async function rete(fn, args, bloccante) {
+  if (bloccante) attesa(true, 'Caricamento…');
+  try {
+    // text/plain evita la richiesta preliminare CORS, che Apps Script non gestisce
+    const r = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                                     body: JSON.stringify({ fn, args, pin }) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error);
+    return j.data;
+  } catch (e) {
+    if (e instanceof TypeError || e instanceof SyntaxError) throw new Error('Connessione non riuscita: controlla la rete e riprova.');
+    throw e;
+  } finally { if (bloccante) attesa(false); }
+}
+
+function pinErrato() { pin = ''; mem.set('pin', ''); schermataPin('PIN errato. Riprova.'); }
+
+/* ---------- Dati in memoria + coda di invio ---------- */
+const persona = id => DB && DB.persone.find(p => p.id.toUpperCase() === String(id).toUpperCase());
+const oraAdesso = () => new Date().toTimeString().slice(0, 5);
+
+// Stesse regole dello script: ritorna il motivo del rifiuto, oppure '' se si può fare
+function regola(p, g, azione, valore) {
+  if (azione === 'pranzo' && !p.acq) return 'Pranzo non acquistato';
+  if (azione === 'pranzo' && valore === 'SI' && !p.pres[g]) return 'Registra prima la presenza';
+  if (azione === 'annulla' && p.pranzo[g] === 'SI') return 'Annulla prima il pranzo';
+  return '';
+}
+
+function eseguiLocale(p, g, azione, valore, t) {
+  if (azione === 'presenza') { if (!p.pres[g]) p.pres[g] = t; }
+  else if (azione === 'pranzo') p.pranzo[g] = valore === 'SI' ? 'SI' : '';
+  else if (azione === 'annulla') p.pres[g] = '';
+}
+
+// Riapplica le registrazioni non ancora inviate sopra i dati arrivati dal foglio
+function riapplica() {
+  coda.forEach(o => { const p = persona(o.id); if (p && !regola(p, o.giorno, o.azione, o.valore)) eseguiLocale(p, o.giorno, o.azione, o.valore, o.ora); });
+}
+
+function ridisegnaSeCambiato(prima) {
+  const p = corrente && persona(corrente);
+  if (p && JSON.stringify(p) !== prima) disegna(p);
+}
+
+// Registra subito sul telefono e mette in coda l'invio al foglio
+function registra(id, g, azione, valore) {
+  const p = persona(id);
+  const motivo = regola(p, g, azione, valore);
+  if (motivo) { avviso(motivo); return false; }
+  if (azione === 'presenza' && p.pres[g]) return true;           // già presente: niente da inviare
+  const t = oraAdesso();
+  eseguiLocale(p, g, azione, valore, t);
+  coda.push({ id: p.id, giorno: g, azione, valore: valore || '', ora: t });
+  salva('coda', coda); salva('db', DB);
+  stato(); invia();
+  return true;
+}
+
+async function invia() {
+  if (invio || !coda.length || !pin) return;
+  invio = true; stato();
+  const lotto = coda.slice();
+  try {
+    const esiti = await rete('registraMolti', [lotto], false);
+    const prima = corrente && JSON.stringify(persona(corrente));
+    coda.splice(0, lotto.length); salva('coda', coda);
+    let rifiutati = 0;
+    esiti.forEach((x, i) => {
+      const o = lotto[i], p = persona(o.id);
+      if (!x.ok) { rifiutati++; avviso('Non registrato: ' + x.errore); }
+      else if (p) { p.pres[o.giorno] = x.presenza; p.pranzo[o.giorno] = x.pranzo; }   // stato confermato dal foglio
+    });
+    riapplica(); salva('db', DB);
+    invio = false; stato();
+    if (rifiutati) aggiorna(false); else ridisegnaSeCambiato(prima);
+  } catch (e) {
+    invio = false; stato();
+    if (/PIN/.test(e.message)) return pinErrato();
+    return void setTimeout(invia, 5000);                           // rete assente: riprova
+  }
+  if (coda.length) invia();
+}
+
+async function aggiorna(bloccante) {
+  try {
+    const prima = corrente && JSON.stringify(persona(corrente));
+    DB = await rete('getTutti', [], bloccante);
+    riapplica(); salva('db', DB);
+    ridisegnaSeCambiato(prima);
+  } catch (e) {
+    if (/PIN/.test(e.message)) return pinErrato();
+    if (bloccante) throw e;
+  }
+}
+
+function errore(e) {
+  if (/PIN/.test(e.message)) return pinErrato();
+  vista(`<h1>Qualcosa non va</h1><p class="errore">${esc(e.message)}</p>
+    <button id="ripr">Riprova</button>${ID ? '' : '<button id="mano" class="nome">Torna alla home</button>'}`);
+  $('ripr').onclick = avvia;
+  if ($('mano')) $('mano').onclick = () => home();
+}
+
+function schermataPin(msg) {
+  vista(`<h1>Presenze</h1><p class="sotto">Inserisci il PIN degli animatori.</p>
+    ${msg ? `<p class="errore">${esc(msg)}</p>` : ''}
+    <input id="pin" type="password" autocomplete="off" placeholder="PIN">
+    <button id="vai">Entra</button>`);
+  $('vai').onclick = () => { pin = $('pin').value.trim(); mem.set('pin', pin); DB = null; avvia(); };
+}
+
+/* ---------- Lettura NFC dentro la pagina (Android + Chrome) ---------- */
+let lettore = null, ctrl = null, wake = null, ultimo = { id: '', t: 0 };
+const nfcDisponibile = 'NDEFReader' in window;
+
+function idDaTag(e) {
+  const dec = new TextDecoder();
+  for (const r of e.message.records) {
+    if (!['url', 'absolute-url', 'text'].includes(r.recordType)) continue;
+    const t = dec.decode(r.data).trim();
+    const m = /[?&]id=([A-Za-z0-9_-]+)/.exec(t);
+    if (m) return m[1];
+    if (/^[A-Za-z0-9_-]{2,20}$/.test(t)) return t;
+  }
+  return '';
+}
+
+function tagLetto(e) {
+  const id = idDaTag(e);
+  if (!id) { bip(false); return avviso('Tag non riconosciuto.'); }
+  const ora = Date.now();
+  if (occupato || (id === ultimo.id && ora - ultimo.t < 3000)) return;   // ignora riletture ravvicinate
+  ultimo = { id, t: ora };
+  if (navigator.vibrate) navigator.vibrate(120);
+  if (giorno === null) return avviso('Scegli prima il giorno (oggi non è lunedì–venerdì).');
+  scheda(id, false, true);
+}
+
+async function bloccaSchermo() {
+  try {
+    if ('wakeLock' in navigator) {
+      wake = await navigator.wakeLock.request('screen');
+      wake.addEventListener('release', () => { wake = null; barra(); });
+    }
+  } catch (e) { wake = null; }
+  barra();
+}
+
+function barra() {
+  const b = $('barra'); b.hidden = !lettore;
+  if (lettore) b.textContent = wake ? '📡 Lettura attiva · schermo sempre acceso' : '📡 Lettura attiva · ⚠️ tieni lo schermo acceso';
+}
+
+async function avviaLettura() {
+  audioPronto();                       // il suono si attiva con un tocco dell'utente
+  try {
+    ctrl = new AbortController();
+    const l = new NDEFReader();
+    await l.scan({ signal: ctrl.signal });
+    l.onreading = tagLetto;
+    l.onreadingerror = () => avviso('Tag non leggibile: riavvicinalo.');
+    lettore = l;
+    await bloccaSchermo();
+    home();
+  } catch (e) {
+    lettore = null;
+    avviso(e.name === 'NotAllowedError' ? 'Permesso NFC negato: consentilo nelle impostazioni del sito.'
+         : 'Impossibile avviare l’NFC: controlla che sia attivo nelle impostazioni del telefono.');
+  }
+}
+
+function fermaLettura() {
+  if (ctrl) ctrl.abort();
+  if (wake) wake.release();
+  lettore = null; ctrl = null; wake = null; barra(); home();
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  if (lettore) bloccaSchermo();          // il sistema rilascia il blocco schermo in background
+  invia(); if (pin && DB && !coda.length) aggiorna(false);
+});
+window.addEventListener('online', invia);
+setInterval(() => { if (pin && DB && !coda.length && !invio && !occupato && document.visibilityState === 'visible') aggiorna(false); }, 60000);
+
+/* ---------- Aspetto: colori squadra, iniziali, suono ---------- */
+const COLORI = { rossa:'#e5484d', blu:'#2f6fed', verde:'#2fa66a', gialla:'#e6a700', arancione:'#f28c28', viola:'#8e5bd6', rosa:'#ec6fa8', azzurra:'#2bb3e6', marrone:'#8a5a3c', grigia:'#7b8794' };
+const PALETTE = ['#e5484d', '#2f6fed', '#2fa66a', '#e6a700', '#f28c28', '#8e5bd6', '#ec6fa8', '#2bb3e6', '#8a5a3c', '#7b8794'];
+function colore(squadra) {
+  const t = String(squadra).toLowerCase();
+  for (const k in COLORI) if (t.includes(k)) return COLORI[k];
+  const i = DB ? DB.squadre.indexOf(squadra) : 0;
+  return PALETTE[(i < 0 ? 0 : i) % PALETTE.length];
+}
+const iniziali = p => ((p.nome[0] || '') + (p.cognome[0] || '')).toUpperCase();
+const norm = t => String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+let ac = null;
+function audioPronto() {
+  try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume(); } catch (e) { ac = null; }
+}
+function bip(buono) {   // buono: due toni crescenti; altrimenti un tono grave
+  try {
+    audioPronto(); if (!ac) return;
+    const t = ac.currentTime;
+    (buono ? [[880, 0, .12], [1320, .14, .18]] : [[200, 0, .35]]).forEach(([f, d, l]) => {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(.0001, t + d);
+      g.gain.exponentialRampToValueAtTime(.4, t + d + .01);
+      g.gain.exponentialRampToValueAtTime(.0001, t + d + l);
+      o.connect(g); g.connect(ac.destination);
+      o.start(t + d); o.stop(t + d + l + .02);
+    });
+  } catch (e) {}
+}
+
+/* ---------- Schermate (tutte istantanee: leggono dai dati in memoria) ---------- */
+function riga(p, conSquadra) {   // cella sempre della stessa altezza: i nomi lunghi vengono troncati con …
+  const segni = (p.pres[giorno] ? `<span class="badge">✓ ${esc(p.pres[giorno])}</span>` : '') + (p.pranzo[giorno] === 'SI' ? '<span class="badge p">🍝</span>' : '');
+  return `<button class="riga" data-id="${esc(p.id)}" data-q="${esc(norm(p.cognome + ' ' + p.nome + ' ' + p.nome + ' ' + p.cognome))}">
+    <span class="avatar" style="background:${colore(p.squadra)}">${esc(iniziali(p))}</span>
+    <span class="testo"><span class="cg">${esc(p.cognome)}</span><span class="nm2">${esc(p.nome)}${conSquadra ? ' · ' + esc(p.squadra) : ''}</span></span>${segni}</button>`;
+}
+
+function pannelloNfc() {
+  if (!nfcDisponibile) return `<div class="carta"><span>Questo telefono non legge i tag dentro l’app: avvicina il tag (si apre la scheda) oppure cerca a mano.</span></div>`;
+  return lettore
+    ? `<div class="carta ok"><span>📡 In attesa di un tag…</span><button class="piccolo" id="stop">Ferma</button></div>`
+    : `<button class="cta" id="avvia">📡 Avvia lettura tag</button>`;
+}
+
+function apriScheda(id) {
+  if (giorno === null) return avviso('Scegli prima il giorno.');
+  scheda(id);
+}
+
+function home(msg) {
+  vista(`<div class="hero"><div class="hero-riga"><div><h1>Presenze</h1>
+      <p class="sotto">${nfcDisponibile ? 'Avvia la lettura o cerca a mano' : 'Cerca a mano il partecipante'}</p></div>
+      <button class="info" id="info" aria-label="Come funziona">ⓘ</button></div>
+      <select id="g" aria-label="Giorno">${giorno === null ? '<option value="">Scegli il giorno…</option>' : ''}
+        ${GIORNI.map((n, i) => `<option value="${i}" ${i === giorno ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+    ${msg ? `<p class="errore">${esc(msg)}</p>` : ''}
+    ${pannelloNfc()}
+    <input id="cercaTutti" class="ricerca" type="search" placeholder="🔍 Cerca per nome o cognome" autocomplete="off" aria-label="Cerca per nome o cognome">
+    <div id="risultati" hidden></div>
+    <div id="blocco-squadre"><h2>Oppure scegli la squadra</h2>
+      <div class="griglia">${DB.squadre.map(s => `<button class="sq" data-sq="${esc(s)}"><span class="pallino" style="background:${colore(s)}"></span><span class="nm">${esc(s)}</span></button>`).join('')}</div></div>
+    <p style="text-align:center;margin:22px 0 0"><button class="piccolo" id="esci">Esci da questo telefono</button></p>`);
+  $('g').onchange = e => { giorno = e.target.value === '' ? null : Number(e.target.value); };
+  $('info').onclick = () => guida(true);
+  $('esci').onclick = esci;
+  if ($('avvia')) $('avvia').onclick = avviaLettura;
+  if ($('stop')) $('stop').onclick = fermaLettura;
+  $('cercaTutti').oninput = e => {          // ricerca generale su tutti i partecipanti
+    const q = norm(e.target.value.trim());
+    const ris = $('risultati');
+    $('blocco-squadre').hidden = !!q; ris.hidden = !q;
+    if (!q) return;
+    const trovati = DB.persone.filter(p => norm(p.cognome + ' ' + p.nome + ' ' + p.nome + ' ' + p.cognome).includes(q));
+    ris.innerHTML = trovati.length
+      ? trovati.slice(0, 40).map(p => riga(p, true)).join('') + (trovati.length > 40 ? '<p class="sotto">Altri risultati: scrivi di più per restringere.</p>' : '')
+      : '<p class="sotto">Nessun risultato.</p>';
+    ris.querySelectorAll('.riga').forEach(b => b.onclick = () => apriScheda(b.dataset.id));
+  };
+  app.querySelectorAll('[data-sq]').forEach(b => b.onclick = () => {
+    if (giorno === null) return avviso('Scegli prima il giorno.');
+    persone(b.dataset.sq);
+  });
+}
+
+function persone(squadra) {
+  const lista = DB.persone.filter(p => p.squadra === squadra);
+  vista(`<button class="piccolo" id="indietro">← Torna alla home</button>
+    <div class="intest" style="--c:${colore(squadra)}"><h1>${esc(squadra)}</h1><p class="sotto" style="margin:0">${GIORNI[giorno]} · ${lista.length} partecipanti</p></div>
+    <input id="cerca" class="ricerca" type="search" placeholder="🔍 Cerca in questa squadra" autocomplete="off" aria-label="Cerca in questa squadra">
+    ${lista.map(p => riga(p)).join('')}`);
+  $('indietro').onclick = () => home();
+  $('cerca').oninput = e => {
+    const q = norm(e.target.value.trim());
+    app.querySelectorAll('.riga').forEach(b => { b.hidden = !b.dataset.q.includes(q); });
+  };
+  app.querySelectorAll('.riga').forEach(b => b.onclick = () => scheda(b.dataset.id));
+}
+
+/* La presenza si registra aprendo la scheda */
+async function scheda(id, daLink, daNfc) {
+  let p = persona(id);
+  if (!p) {                                  // partecipante aggiunto dopo l'ultimo scaricamento: riscarico
+    try { await aggiorna(true); } catch (e) { return errore(e); }
+    if (!pin) return;
+    p = persona(id);
+  }
+  if (!p) {
+    if (daNfc) bip(false);
+    return daLink ? errore(new Error('Partecipante non trovato: ' + id)) : avviso('Tag non riconosciuto: ' + id);
+  }
+  registra(p.id, giorno, 'presenza', '');
+  if (daNfc) bip(true);
+  disegna(p);
+}
+
+function profilo(p) {
+  return `<div class="profilo"><span class="avatar grande" style="background:${colore(p.squadra)}">${esc(iniziali(p))}</span>
+    <h1>${esc(p.nome)} ${esc(p.cognome)}</h1>
+    <div class="chips"><span class="chip" style="color:${colore(p.squadra)}">● ${esc(p.squadra)}</span><span class="chip">${GIORNI[giorno]}</span></div></div>`;
+}
+
+function disegna(p, msg) {
+  const pres = p.pres[giorno], pr = p.pranzo[giorno];
+  const bloccoPres = pres
+    ? `<div class="carta ok"><span>✅ <b>Presente</b> dalle ${esc(pres)}</span>${pr === 'SI' ? '' : '<button class="piccolo" id="annulla">Annulla</button>'}</div>`
+    : `<div class="carta"><span>Presenza non registrata</span><button class="piccolo" id="reg">Registra</button></div>`;
+  const bloccoPranzo = !p.acq
+    ? `<div class="carta"><span>Pranzo non acquistato</span></div>`
+    : pr === 'SI'
+      ? `<div class="carta ok"><span>🍝 <b>Pranzo confermato</b></span><button class="piccolo" id="annPranzo">Annulla</button></div>`
+      : pres
+        ? `<button class="pranzo" id="confPranzo">Conferma pranzo</button>`
+        : `<div class="carta"><span>Registra prima la presenza per confermare il pranzo</span></div>`;
+  vista(`${msg ? `<div class="avviso" role="status">✓ ${esc(msg)}</div>` : ''}${profilo(p)}
+    <h2>Presenza</h2>${bloccoPres}<h2>Pranzo</h2>${bloccoPranzo}
+    <button class="fine" id="fine">Fatto</button>`);
+  corrente = p.id;
+  const agisci = (azione, valore, conferma) => { if (registra(p.id, giorno, azione, valore)) disegna(p, conferma); };
+  if ($('confPranzo')) $('confPranzo').onclick = () => agisci('pranzo', 'SI', 'Pranzo confermato');
+  if ($('annPranzo')) $('annPranzo').onclick = () => { if (confirm('Annullare il pranzo di oggi?')) agisci('pranzo', '', 'Pranzo annullato'); };
+  if ($('annulla')) $('annulla').onclick = () => { if (confirm('Annullare la presenza di oggi?')) agisci('annulla', '', 'Presenza annullata'); };
+  if ($('reg')) $('reg').onclick = () => agisci('presenza', '', 'Presenza registrata');
+  // Aperta da un link tag (?id=) si chiude qui; nella postazione si torna alla home, con la lettura sempre attiva.
+  $('fine').onclick = () => ID ? riepilogoFinale(p) : home();
+}
+
+function riepilogoFinale(p) {
+  const pres = p.pres[giorno], pr = p.pranzo[giorno];
+  vista(`<h1 style="text-align:center">Fatto ✓</h1>${profilo(p)}
+    <div class="carta ${pres ? 'ok' : ''}"><span>${pres ? '✅ <b>Presente</b> dalle ' + esc(pres) : 'Presenza non registrata'}</span></div>
+    <div class="carta ${pr === 'SI' ? 'ok' : ''}"><span>${!p.acq ? 'Pranzo non acquistato' : pr === 'SI' ? '🍝 <b>Pranzo confermato</b>' : 'Pranzo non confermato'}</span></div>
+    <p class="sotto" style="margin-top:20px;text-align:center">Puoi chiudere la pagina oppure tornare alla schermata iniziale.</p>
+    <button id="home">Torna alla schermata iniziale</button>
+    <p style="text-align:center;margin:0"><button class="piccolo" id="modifica">Modifica</button></p>`);
+  $('home').onclick = () => { location.href = location.pathname; };   // stesso indirizzo, senza ?id=
+  $('modifica').onclick = () => disegna(p);
+}
+
+function sceltaGiorno() {
+  vista(`<h1>Che giorno è?</h1><p class="sotto">Oggi non è lunedì–venerdì: scegli il giorno da registrare.</p>
+    <select id="g">${GIORNI.map((n, i) => `<option value="${i}">${n}</option>`).join('')}</select>
+    <button id="ok">Continua</button>`);
+  $('ok').onclick = () => { giorno = Number($('g').value); scheda(ID, true); };
+}
+
+function esci() {
+  const msg = coda.length
+    ? coda.length + ' registrazioni non sono ancora state inviate e andrebbero perse. Uscire e cancellare PIN e dati da questo telefono?'
+    : 'Uscire e cancellare PIN e dati da questo telefono?';
+  if (!confirm(msg)) return;
+  ['pin', 'db', 'coda'].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+  location.href = location.pathname;
+}
+
+function guida(on) {                         // pannello a tutto schermo, sempre aperto dall'inizio
+  const g = $('guida');
+  g.hidden = !on;
+  document.body.style.overflow = on ? 'hidden' : '';
+  if (on) { g.scrollTop = 0; $('chiudi-guida').focus({ preventScroll: true }); }
+}
+$('apri-guida').onclick = () => guida(true);
+$('chiudi-guida').onclick = () => guida(false);
+$('ho-capito').onclick = () => guida(false);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') guida(false); });
+
+async function avvia() {
+  if (!API_URL || API_URL.indexOf('INCOLLA') >= 0) return vista('<h1>Configurazione</h1><p class="errore">Manca l’indirizzo della web app Apps Script: va scritto nel file config.js, nello stesso repository di index.html.</p>');
+  if (!pin) return schermataPin();
+  if (!DB) {                                  // primo avvio su questo telefono: unico caricamento con attesa
+    try { await aggiorna(true); } catch (e) { return errore(e); }
+    if (!pin || !DB) return;
+  } else aggiorna(false);                     // già in memoria: si parte subito e si aggiorna sullo sfondo
+  stato(); invia();
+  if (ID) return giorno === null ? sceltaGiorno() : scheda(ID, true);
+  home();
+}
+
+$('versione').textContent = 'Versione 9 · ' + (ID ? 'tag ' + ID : 'postazione');
+stato();
+avvia();
+</script>
+</body>
+</html>
